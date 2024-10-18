@@ -2,13 +2,20 @@
 
 import React, { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useUploadFile } from "@/hooks/use-upload-file";
 import { createClip } from "@/lib/action";
+import { getErrorMessage } from "@/lib/handle-error";
+import { z } from "zod";
+
+import { FileUploader } from "@/components/file-uploader";
+import { UploadedFilesCard } from "../_components/uploaded-files-card";
 
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
     Select,
     SelectContent,
@@ -24,8 +31,6 @@ import {
     FormLabel,
     FormMessage,
 } from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 
 const FormSchema = z.object({
     name: z.string(),
@@ -33,36 +38,82 @@ const FormSchema = z.object({
     text: z.string().optional(),
 });
 
+const fileFormSchema = z.object({
+    files: z.array(z.instanceof(File)),
+});
+
+type FileSchema = z.infer<typeof fileFormSchema>;
+
 const ClipPage = () => {
     const pathname = usePathname();
     const [clipName] = useState(pathname.replace("/", ""));
 
+    // For: Mail Clip Creation Form
     const form = useForm<z.infer<typeof FormSchema>>({
         resolver: zodResolver(FormSchema),
     });
 
-    // Set the default value for the hidden field when the component mounts
     useEffect(() => {
         form.setValue("name", clipName);
     }, [clipName, form]);
 
-    async function onSubmit(data: z.infer<typeof FormSchema>) {
-        console.log(data);
-        await createClip(data);
-        toast(JSON.stringify(data, null, 2));
+    async function onClipSubmit(data: z.infer<typeof FormSchema>) {
+        const formData = {
+            ...data,
+            files: uploadedFiles.map((file) => ({
+                url: file.url,
+                key: file.key,
+                name: file.name,
+            })),
+        };
+        await createClip(formData);
+        console.log("-- My Form Data", formData);
+        toast.success("Clip Created Successfully");
+    }
+
+    // For: File Upload Form
+    const [loading, setLoading] = useState(false);
+    const { onUpload, progresses, uploadedFiles, isUploading } = useUploadFile(
+        "fileUploader",
+        { defaultUploadedFiles: [] }
+    );
+    const fileUploadForm = useForm<FileSchema>({
+        resolver: zodResolver(fileFormSchema),
+        defaultValues: {
+            files: [],
+        },
+    });
+
+    function onFileSubmit(input: FileSchema) {
+        setLoading(true);
+
+        toast.promise(onUpload(input.files), {
+            loading: "Uploading files...",
+            success: () => {
+                fileUploadForm.reset();
+                setLoading(false);
+                return "Files uploaded";
+            },
+            error: (err) => {
+                setLoading(false);
+                console.log(getErrorMessage(err));
+                return getErrorMessage(err);
+            },
+        });
     }
 
     return (
-        <div className="px-20 py-10">
-            <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)}>
-                    <div className="flex justify-between">
-                        <h1 className="font-bold text-3xl">{clipName}</h1>
-                        <Button type="submit">Create</Button>
-                    </div>
+        <div className="px-20 pt-10">
+            <h1 className="font-bold text-3xl">{clipName}</h1>
 
-                    <div className="flex gap-5">
-                        <div className="w-4/5 pt-1 space-y-5">
+            <div className="flex gap-6">
+                <div className="w-3/4" id="clip-creation-form">
+                    <Form {...form}>
+                        <form
+                            id="clip-creation-form"
+                            onSubmit={form.handleSubmit(onClipSubmit)}
+                            className="space-y-5 mt-1"
+                        >
                             <FormField
                                 control={form.control}
                                 name="name"
@@ -90,7 +141,7 @@ const ClipPage = () => {
                                             value={field.value} // Bind the value here
                                         >
                                             <FormControl>
-                                                <SelectTrigger className="w-[180px]">
+                                                <SelectTrigger className="w-[250px]">
                                                     <SelectValue placeholder="Select Validity" />
                                                 </SelectTrigger>
                                             </FormControl>
@@ -142,13 +193,61 @@ const ClipPage = () => {
                                     </FormItem>
                                 )}
                             />
-                        </div>
-                        <div className="w-1/5 py-6">
-                            <p className="text-lg">Files</p>
-                        </div>
-                    </div>
-                </form>
-            </Form>
+                            <Button type="submit" className="w-full">
+                                Create Clip
+                            </Button>
+                        </form>
+                    </Form>
+                </div>
+                <div className="w-1/4 py-6">
+                    <Form {...fileUploadForm} id="file-upload-form">
+                        <form
+                            id="file-upload-form"
+                            onSubmit={fileUploadForm.handleSubmit(onFileSubmit)}
+                            className="flex w-full flex-col gap-6"
+                        >
+                            <FormField
+                                control={fileUploadForm.control}
+                                name="files"
+                                render={({ field }) => (
+                                    <div className="space-y-6">
+                                        <FormItem className="w-full">
+                                            <FormLabel className="text-lg">
+                                                Files
+                                            </FormLabel>
+                                            <FormControl>
+                                                <FileUploader
+                                                    value={field.value}
+                                                    onValueChange={
+                                                        field.onChange
+                                                    }
+                                                    maxFileCount={4}
+                                                    maxSize={4 * 1024 * 1024}
+                                                    progresses={progresses}
+                                                    disabled={isUploading}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                        {uploadedFiles.length > 0 ? (
+                                            <UploadedFilesCard
+                                                uploadedFiles={uploadedFiles}
+                                            />
+                                        ) : null}
+                                    </div>
+                                )}
+                            />
+                            <Button
+                                size="sm"
+                                variant="secondary"
+                                disabled={loading}
+                            >
+                                Upload
+                            </Button>
+                        </form>
+                    </Form>
+                </div>
+            </div>
         </div>
     );
 };
