@@ -11,6 +11,7 @@ export interface IClip {
     validity: number;
     text: string;
     files?: IFile[];
+    expireAt: Date;
 }
 
 export interface IClipDocument extends IClip, Document {
@@ -50,6 +51,10 @@ const clipSchema = new mongoose.Schema<IClipDocument>(
         files: {
             type: [fileSchema],
             required: false,
+        },
+        expireAt: {
+            type: Date,
+            required: true,
         },
     },
     {

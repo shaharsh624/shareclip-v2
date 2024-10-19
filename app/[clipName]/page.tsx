@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useUploadFile } from "@/hooks/use-upload-file";
-import { createClip } from "@/lib/action";
+import { createClip, getClip, GetClipResponse } from "@/lib/action";
 import { getErrorMessage } from "@/lib/handle-error";
 import { z } from "zod";
 
 import { FileUploader } from "@/components/file-uploader";
-import { UploadedFilesCard } from "../_components/uploaded-files-card";
+import { PageExistUploadedFiles } from "../_components/page-exist-uploaded-files";
 
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,13 @@ import {
     FormLabel,
     FormMessage,
 } from "@/components/ui/form";
+import {
+    TooltipProvider,
+    Tooltip,
+    TooltipTrigger,
+    TooltipContent,
+} from "@/components/ui/tooltip";
+import { IClip } from "@/models/clipModel";
 
 const FormSchema = z.object({
     name: z.string(),
@@ -44,11 +51,133 @@ const fileFormSchema = z.object({
 
 type FileSchema = z.infer<typeof fileFormSchema>;
 
-const ClipPage = () => {
-    const pathname = usePathname();
-    const [clipName] = useState(pathname.replace("/", ""));
+interface ClipExistPageProps {
+    clipName: string;
+    data: IClip; // Assuming data is of type IClip
+}
 
-    // For: Mail Clip Creation Form
+interface ClipNotExistPageProps {
+    clipName: string;
+}
+
+function ClipPage() {
+    const pathname = usePathname();
+    const clipName = pathname.replace("/", ""); // Remove leading slash
+
+    const [data, setData] = useState<IClip | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
+            try {
+                const result: GetClipResponse = await getClip(clipName);
+                if (result && "message" in result) {
+                    // Handle error message from server action
+                    setError(result.message);
+                } else {
+                    // Set the data if no error
+                    setData(result);
+                }
+            } catch (err) {
+                setError("An unexpected error occurred.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [clipName]);
+
+    if (loading) {
+        return <div>Loading...</div>;
+    }
+
+    if (error) {
+        return <div>Error: {error}</div>;
+    }
+
+    return data ? (
+        <ClipExistPage clipName={clipName} data={data} />
+    ) : (
+        <ClipNotExistPage clipName={clipName} />
+    );
+}
+
+const ClipExistPage: React.FC<ClipExistPageProps> = ({ clipName, data }) => {
+    const [uploadedFiles] = useState(data.files);
+
+    function copyText(clipText: string) {
+        navigator.clipboard.writeText(clipText);
+        toast.info("Data Copied to Clipboard");
+    }
+
+    return (
+        <div className="px-20 pt-10">
+            <h1 className="font-bold text-3xl">{clipName}</h1>
+
+            <div className="flex gap-6">
+                <div className="w-3/4" id="clip-creation-form">
+                    <div className="space-y-5 mt-1">
+                        <div></div>
+                        <div className="space-y-3">
+                            <h2 className="text-lg font-medium">Validity</h2>
+                            <p>{data.validity}</p>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-lg font-medium">Text</h2>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                onClick={() =>
+                                                    copyText(data.text)
+                                                }
+                                            >
+                                                Copy to Clipboard
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Click to copy</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </div>
+                            <Textarea
+                                value={data.text}
+                                readOnly
+                                className="resize-none"
+                                rows={20}
+                            />
+                        </div>
+                    </div>
+                </div>
+                <div className="w-1/4 py-6">
+                    <h2 className="text-lg font-medium">Files</h2>
+                    <div className="pt-2">
+                        {uploadedFiles ? (
+                            <div className="space-y-6 w-full">
+                                {uploadedFiles.length > 0 ? (
+                                    <PageExistUploadedFiles
+                                        uploadedFiles={uploadedFiles}
+                                    />
+                                ) : null}
+                            </div>
+                        ) : (
+                            <div>No File</div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const ClipNotExistPage: React.FC<ClipNotExistPageProps> = ({ clipName }) => {
+    // For: Main Clip Creation Form
     const form = useForm<z.infer<typeof FormSchema>>({
         resolver: zodResolver(FormSchema),
     });
@@ -67,8 +196,10 @@ const ClipPage = () => {
             })),
         };
         await createClip(formData);
-        console.log("-- My Form Data", formData);
         toast.success("Clip Created Successfully");
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
     }
 
     // For: File Upload Form
@@ -193,9 +324,23 @@ const ClipPage = () => {
                                     </FormItem>
                                 )}
                             />
-                            <Button type="submit" className="w-full">
-                                Create Clip
-                            </Button>
+
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            type="submit"
+                                            className="w-full"
+                                            variant="secondary"
+                                        >
+                                            Create Clip
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Click to create clip</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                         </form>
                     </Form>
                 </div>
@@ -230,20 +375,30 @@ const ClipPage = () => {
                                             <FormMessage />
                                         </FormItem>
                                         {uploadedFiles.length > 0 ? (
-                                            <UploadedFilesCard
+                                            <PageExistUploadedFiles
                                                 uploadedFiles={uploadedFiles}
                                             />
                                         ) : null}
                                     </div>
                                 )}
                             />
-                            <Button
-                                size="sm"
-                                variant="secondary"
-                                disabled={loading}
-                            >
-                                Upload
-                            </Button>
+
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            disabled={loading}
+                                        >
+                                            Upload
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Upload files</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                         </form>
                     </Form>
                 </div>
