@@ -80,7 +80,7 @@ function ClipPage() {
                     // Set the data if no error
                     setData(result);
                 }
-            } catch (err) {
+            } catch {
                 setError("An unexpected error occurred.");
             } finally {
                 setLoading(false);
@@ -345,7 +345,7 @@ const ClipNotExistPage: React.FC<ClipNotExistPageProps> = ({ clipName }) => {
                     </Form>
                 </div>
                 <div className="w-1/4 py-6">
-                    <Form {...fileUploadForm} id="file-upload-form">
+                    <Form {...fileUploadForm}>
                         <form
                             id="file-upload-form"
                             onSubmit={fileUploadForm.handleSubmit(onFileSubmit)}
