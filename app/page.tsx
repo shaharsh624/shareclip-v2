@@ -23,38 +23,41 @@ export default function Home() {
             <Navbar />
             <main className="flex-1">
                 <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48">
-                    <div className="container px-4 md:px-6">
+                    <div className="container mx-auto px-4 md:px-6">
                         <div className="flex flex-col items-center space-y-4 text-center">
-                            <div className="space-y-2">
-                                <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none">
+                            <div className="space-y-4">
+                                <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl">
                                     Share Text and Files on Internet
                                 </h1>
-                                <p className="mx-auto max-w-[550px] text-gray-500 md:text-xl dark:text-gray-400">
+                                <p className="mx-auto max-w-[90%] md:max-w-[550px] text-gray-500 md:text-xl dark:text-gray-400">
                                     Create temporary clips with custom URLs.
                                     Perfect for sharing information or files
                                     online.
                                 </p>
                             </div>
-                            <div className="w-full max-w-sm space-y-2">
+                            <div className="w-full max-w-sm space-y-4">
                                 <form
-                                    className="flex space-x-2"
+                                    className="flex flex-col md:flex-row space-y-5 md:space-y-0 md:space-x-2 items-center justify-center"
                                     onSubmit={handleSubmit}
                                 >
                                     <Input
-                                        className="flex-1"
+                                        className="max-w-xs flex-1"
                                         placeholder="Enter a personalized clip name"
                                         type="text"
                                         value={clipName}
                                         onChange={(e) =>
                                             setClipName(e.target.value)
-                                        } // Update state on input change
+                                        }
                                     />
-                                    <Button type="submit">
+                                    <Button
+                                        type="submit"
+                                        className="max-w-xs md:w-auto"
+                                    >
                                         Visit
                                         <ArrowRight className="ml-2 h-4 w-4" />
                                     </Button>
                                 </form>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
                                     Start sharing for free. No signup needed.
                                 </p>
                             </div>
