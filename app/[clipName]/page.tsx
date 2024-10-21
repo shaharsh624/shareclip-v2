@@ -8,7 +8,9 @@ import { useUploadFile } from "@/hooks/use-upload-file";
 import { createClip, getClip, GetClipResponse } from "@/lib/action";
 import { getErrorMessage } from "@/lib/handle-error";
 import { z } from "zod";
+import { IClip } from "@/models/clipModel";
 
+import LoadingPage from "../_components/loading";
 import { FileUploader } from "@/components/file-uploader";
 import { PageExistUploadedFiles } from "../_components/page-exist-uploaded-files";
 
@@ -37,8 +39,6 @@ import {
     TooltipTrigger,
     TooltipContent,
 } from "@/components/ui/tooltip";
-import { IClip } from "@/models/clipModel";
-import LoadingPage from "../_components/loading";
 
 const FormSchema = z.object({
     name: z.string(),

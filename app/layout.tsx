@@ -12,8 +12,39 @@ const geistSans = localFont({
 });
 
 export const metadata: Metadata = {
+    metadataBase: new URL("https://shareclip.harshshah.me"),
     title: "Shareclip",
+    icons: {
+        icon: "/logo.svg",
+    },
     description: "A Secure Temporary Sharing App",
+    openGraph: {
+        title: "Shareclip",
+        description: "A Secure Temporary Sharing App",
+        url: "https://shareclip.harshshah.me",
+        siteName: "Shareclip",
+        locale: "en_US",
+        type: "website",
+    },
+    robots: {
+        index: true,
+        follow: true,
+        googleBot: {
+            index: true,
+            follow: true,
+            "max-video-preview": -1,
+            "max-image-preview": "large",
+            "max-snippet": -1,
+        },
+    },
+    twitter: {
+        title: "Shareclip",
+        card: "summary_large_image",
+    },
+    verification: {
+        google: "",
+        yandex: "",
+    },
 };
 
 export default function RootLayout({

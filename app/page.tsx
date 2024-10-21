@@ -11,7 +11,7 @@ import Navbar from "@/components/navbar";
 export default function Home() {
     const [clipName, setClipName] = useState("");
 
-    const handleSubmit = (e) => {
+    const handleSubmit = (e: { preventDefault: () => void }) => {
         e.preventDefault(); // Prevent the default form submission
         if (clipName) {
             window.location.href = `/${clipName}`; // Redirect to the desired URL
