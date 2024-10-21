@@ -38,6 +38,7 @@ import {
     TooltipContent,
 } from "@/components/ui/tooltip";
 import { IClip } from "@/models/clipModel";
+import LoadingPage from "../_components/loading";
 
 const FormSchema = z.object({
     name: z.string(),
@@ -91,7 +92,11 @@ function ClipPage() {
     }, [clipName]);
 
     if (loading) {
-        return <div>Loading...</div>;
+        return (
+            <div>
+                <LoadingPage />
+            </div>
+        );
     }
 
     if (error) {
@@ -137,6 +142,10 @@ const ClipExistPage: React.FC<ClipExistPageProps> = ({ clipName, data }) => {
         const hours = Math.floor((seconds % (24 * 60 * 60)) / (60 * 60));
         const mins = Math.floor((seconds % (60 * 60)) / 60);
         const secs = seconds % 60;
+
+        if (secs == 0) {
+            window.location.reload();
+        }
 
         if (days > 0) {
             return `${days} day${days > 1 ? "s" : ""}, ${hours} hour${
@@ -265,7 +274,14 @@ const ClipNotExistPage: React.FC<ClipNotExistPageProps> = ({ clipName }) => {
     function onFileSubmit(input: FileSchema) {
         setLoading(true);
 
-        toast.promise(onUpload(input.files), {
+        const filesWithCustomId = input.files.map((file) => ({
+            file,
+            id: clipName,
+        }));
+
+        const filesToUpload = filesWithCustomId.map(({ file }) => file);
+
+        toast.promise(onUpload(filesToUpload), {
             loading: "Uploading files...",
             success: () => {
                 fileUploadForm.reset();
@@ -324,8 +340,8 @@ const ClipNotExistPage: React.FC<ClipNotExistPageProps> = ({ clipName }) => {
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                                <SelectItem value="120">
-                                                    2 Minutes
+                                                <SelectItem value="60">
+                                                    1 Minute
                                                 </SelectItem>
                                                 <SelectItem value="300">
                                                     5 Minutes

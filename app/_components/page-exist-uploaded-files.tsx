@@ -10,17 +10,32 @@ import {
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { EmptyCard } from "@/components/empty-card";
 import { FileTextIcon } from "@radix-ui/react-icons";
-import { formatBytes } from "@/lib/utils";
+import useDownloader from "react-use-downloader";
 import Link from "next/link";
 import { IFile } from "@/lib/action";
+import { ArrowDownToLine, ArrowUpRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface PageExistUploadedFilesProps {
     uploadedFiles: IFile[];
 }
 
+const truncateFilename = (filename, maxLength = 20) => {
+    const extension = filename.split(".").pop(); // Get the file extension
+    const baseName = filename.substring(
+        0,
+        filename.length - extension.length - 1
+    );
+    if (baseName.length > maxLength) {
+        return `${baseName.substring(0, maxLength)}...${extension}`;
+    }
+    return filename;
+};
+
 export function PageExistUploadedFiles({
     uploadedFiles,
 }: PageExistUploadedFilesProps) {
+    const { download } = useDownloader();
     return (
         <Card>
             <CardHeader>
@@ -33,21 +48,30 @@ export function PageExistUploadedFiles({
                         <div className="flex w-max space-y-4 flex-col">
                             {uploadedFiles.map((file) => (
                                 <div key={file.key} className="">
-                                    <Link href={file.url} target="_blank">
-                                        <div className="flex flex-1 gap-2.5">
-                                            <FileTextIcon
-                                                className="size-10 text-muted-foreground justify-center"
-                                                aria-hidden="true"
+                                    <div className="flex flex-1 gap-3 items-center justify-between">
+                                        <FileTextIcon
+                                            className="size-8 text-muted-foreground justify-center"
+                                            aria-hidden="true"
+                                        />
+                                        <Link href={file.url} target="_blank">
+                                            <p className="line-clamp-1 text-sm font-semibold text-foreground/80 hover:underline">
+                                                {truncateFilename(file.name)}
+                                            </p>
+                                        </Link>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={() =>
+                                                download(file.url, file.name)
+                                            }
+                                        >
+                                            <ArrowDownToLine
+                                                size={16}
+                                                strokeWidth={1.75}
+                                                className=" hover:underline"
                                             />
-                                            <div className="flex w-full flex-col gap-2">
-                                                <div className="flex flex-col gap-px">
-                                                    <p className="line-clamp-1 text-sm font-medium text-foreground/80 hover:underline">
-                                                        {file.name}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </Link>
+                                        </Button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
