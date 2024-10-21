@@ -3,7 +3,7 @@ import { UploadThingError } from "uploadthing/server";
 
 const f = createUploadthing();
 
-async function auth(req: Request) {
+async function auth() {
     await new Promise((resolve) => setTimeout(resolve, 100));
     return { id: "fakeId" };
 }
@@ -18,8 +18,8 @@ export const ourFileRouter = {
             maxFileCount: 8,
         },
     })
-        .middleware(async ({ req }) => {
-            const user = await auth(req);
+        .middleware(async () => {
+            const user = await auth();
 
             if (!user) throw new UploadThingError("Unauthorized");
 

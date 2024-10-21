@@ -1,5 +1,6 @@
-import Image from "next/image";
-
+import Link from "next/link";
+import { IFile } from "@/lib/action";
+import useDownloader from "react-use-downloader";
 import {
     Card,
     CardContent,
@@ -9,12 +10,9 @@ import {
 } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { EmptyCard } from "@/components/empty-card";
-import { FileTextIcon } from "@radix-ui/react-icons";
-import useDownloader from "react-use-downloader";
-import Link from "next/link";
-import { IFile } from "@/lib/action";
-import { ArrowDownToLine, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ArrowDownToLine } from "lucide-react";
+import { FileTextIcon } from "@radix-ui/react-icons";
 
 interface PageExistUploadedFilesProps {
     uploadedFiles: IFile[];
