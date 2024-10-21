@@ -18,12 +18,11 @@ interface PageExistUploadedFilesProps {
     uploadedFiles: IFile[];
 }
 
-const truncateFilename = (filename, maxLength = 20) => {
-    const extension = filename.split(".").pop(); // Get the file extension
-    const baseName = filename.substring(
-        0,
-        filename.length - extension.length - 1
-    );
+const truncateFilename = (filename: string, maxLength = 20) => {
+    const parts = filename.split(".");
+    const extension = parts.length > 1 ? parts.pop() : "";
+    const baseName = parts.join(".");
+
     if (baseName.length > maxLength) {
         return `${baseName.substring(0, maxLength)}...${extension}`;
     }
