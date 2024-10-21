@@ -47,17 +47,6 @@ export const createClip = async (formData: IFormData) => {
     }
 };
 
-export const deleteClip = async (id: FormData) => {
-    const clipName = id.get("name");
-    try {
-        await Clip.deleteOne({ name: clipName });
-        revalidatePath("/");
-        return "clip deleted";
-    } catch {
-        return { message: "error deleting clip" };
-    }
-};
-
 export const getClip = async (clipName: string) => {
     try {
         const foundClip = await Clip.findOne({ name: clipName }).lean();

@@ -3,7 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
-import { connectToMongoDB } from "@/lib/db";
+import deleteExpiredClipsJob from "@/lib/cronJobs";
 
 const geistSans = localFont({
     src: "./fonts/GeistVF.woff",
@@ -21,7 +21,9 @@ export default function RootLayout({
 }: Readonly<{
     children: React.ReactNode;
 }>) {
-    connectToMongoDB();
+    if (typeof window === "undefined") {
+        deleteExpiredClipsJob();
+    }
     return (
         <html lang="en" suppressHydrationWarning={true}>
             <body

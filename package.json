@@ -28,6 +28,7 @@
     "mongoose": "^8.7.2",
     "next": "14.2.15",
     "next-themes": "^0.3.0",
+    "node-cron": "^3.0.3",
     "react": "^18",
     "react-dom": "^18",
     "react-dropzone": "^14.2.9",
@@ -40,6 +41,7 @@
   },
   "devDependencies": {
     "@types/node": "^20",
+    "@types/node-cron": "^3.0.11",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "eslint": "^8",

@@ -62,7 +62,7 @@ interface ClipNotExistPageProps {
 
 function ClipPage() {
     const pathname = usePathname();
-    const clipName = pathname.replace("/", ""); // Remove leading slash
+    const clipName = pathname.replace("/", "");
 
     const [data, setData] = useState<IClip | null>(null);
     const [loading, setLoading] = useState(true);
@@ -107,6 +107,53 @@ function ClipPage() {
 
 const ClipExistPage: React.FC<ClipExistPageProps> = ({ clipName, data }) => {
     const [uploadedFiles] = useState(data.files);
+    const [remainingTime, setRemainingTime] = useState(
+        calculateRemainingTime(data.expireAt)
+    );
+
+    useEffect(() => {
+        // Update the remaining time every second
+        const interval = setInterval(() => {
+            const newRemainingTime = calculateRemainingTime(data.expireAt);
+            setRemainingTime(newRemainingTime);
+
+            if (newRemainingTime <= 0) {
+                clearInterval(interval);
+            }
+        }, 1000);
+
+        // Cleanup the interval on component unmount
+        return () => clearInterval(interval);
+    }, [data.expireAt]);
+
+    function calculateRemainingTime(expireAt: Date) {
+        const expirationDate = new Date(expireAt).getTime();
+        const now = Date.now();
+        return Math.max(0, Math.floor((expirationDate - now) / 1000));
+    }
+
+    const formatValidity = (seconds: number) => {
+        const days = Math.floor(seconds / (24 * 60 * 60));
+        const hours = Math.floor((seconds % (24 * 60 * 60)) / (60 * 60));
+        const mins = Math.floor((seconds % (60 * 60)) / 60);
+        const secs = seconds % 60;
+
+        if (days > 0) {
+            return `${days} day${days > 1 ? "s" : ""}, ${hours} hour${
+                hours > 1 ? "s" : ""
+            }`;
+        } else if (hours > 0) {
+            return `${hours} hour${hours > 1 ? "s" : ""}, ${mins} minute${
+                mins > 1 ? "s" : ""
+            }`;
+        } else if (mins > 0) {
+            return `${mins} minute${mins > 1 ? "s" : ""}, ${secs} second${
+                secs > 1 ? "s" : ""
+            }`;
+        } else {
+            return `${secs} second${secs > 1 ? "s" : ""}`;
+        }
+    };
 
     function copyText(clipText: string) {
         navigator.clipboard.writeText(clipText);
@@ -123,7 +170,7 @@ const ClipExistPage: React.FC<ClipExistPageProps> = ({ clipName, data }) => {
                         <div></div>
                         <div className="space-y-3">
                             <h2 className="text-lg font-medium">Validity</h2>
-                            <p>{data.validity}</p>
+                            <p>{formatValidity(remainingTime)}</p>
                         </div>
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
@@ -277,8 +324,8 @@ const ClipNotExistPage: React.FC<ClipNotExistPageProps> = ({ clipName }) => {
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                                <SelectItem value="60">
-                                                    1 Minute
+                                                <SelectItem value="120">
+                                                    2 Minutes
                                                 </SelectItem>
                                                 <SelectItem value="300">
                                                     5 Minutes
@@ -294,9 +341,6 @@ const ClipNotExistPage: React.FC<ClipNotExistPageProps> = ({ clipName }) => {
                                                 </SelectItem>
                                                 <SelectItem value="604800">
                                                     1 Week
-                                                </SelectItem>
-                                                <SelectItem value="2592000">
-                                                    1 Month
                                                 </SelectItem>
                                             </SelectContent>
                                         </Select>
