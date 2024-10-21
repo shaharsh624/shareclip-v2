@@ -36,7 +36,18 @@ export default function RootLayout({
                     disableTransitionOnChange
                 >
                     {children}
-                    <Toaster />
+                    <Toaster
+                        position="top-right"
+                        toastOptions={{
+                            unstyled: false,
+                            classNames: {
+                                error: "bg-red-400",
+                                success: "text-green-400",
+                                warning: "text-yellow-400",
+                                info: "bg-blue-400",
+                            },
+                        }}
+                    />
                 </ThemeProvider>
             </body>
         </html>

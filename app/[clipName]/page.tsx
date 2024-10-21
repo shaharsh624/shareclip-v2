@@ -166,7 +166,7 @@ const ClipExistPage: React.FC<ClipExistPageProps> = ({ clipName, data }) => {
 
     function copyText(clipText: string) {
         navigator.clipboard.writeText(clipText);
-        toast.info("Data Copied to Clipboard");
+        toast("Data Copied to Clipboard");
     }
 
     return (
@@ -243,19 +243,23 @@ const ClipNotExistPage: React.FC<ClipNotExistPageProps> = ({ clipName }) => {
     }, [clipName, form]);
 
     async function onClipSubmit(data: z.infer<typeof FormSchema>) {
-        const formData = {
-            ...data,
-            files: uploadedFiles.map((file) => ({
-                url: file.url,
-                key: file.key,
-                name: file.name,
-            })),
-        };
-        await createClip(formData);
-        toast.success("Clip Created Successfully");
-        setTimeout(() => {
-            window.location.reload();
-        }, 1000);
+        if (uploadedFiles.length != fileUploadForm.getValues().files.length) {
+            toast.warning("Please upload all files before creating the clip");
+        } else {
+            const formData = {
+                ...data,
+                files: uploadedFiles.map((file) => ({
+                    url: file.url,
+                    key: file.key,
+                    name: file.name,
+                })),
+            };
+            await createClip(formData);
+            toast.success("Clip Created Successfully");
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        }
     }
 
     // For: File Upload Form

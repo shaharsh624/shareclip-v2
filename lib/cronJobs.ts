@@ -16,10 +16,9 @@ const deleteExpiredClipsJob = async () => {
             .map((file) => file?.key)
             .filter((key): key is string => key !== undefined);
 
-        const result = await Clip.deleteMany({ _id: { $in: clipIds } });
+        await Clip.deleteMany({ _id: { $in: clipIds } });
         await deleteFiles({ fileKeys });
 
-        console.log(`Deleted ${result.deletedCount} expired clips.`);
     } catch (error) {
         console.error("Error deleting expired clips:", error);
     }
