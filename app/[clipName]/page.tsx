@@ -39,6 +39,7 @@ import {
     TooltipTrigger,
     TooltipContent,
 } from "@/components/ui/tooltip";
+import Navbar from "@/components/navbar";
 
 const FormSchema = z.object({
     name: z.string(),
@@ -54,7 +55,7 @@ type FileSchema = z.infer<typeof fileFormSchema>;
 
 interface ClipExistPageProps {
     clipName: string;
-    data: IClip; // Assuming data is of type IClip
+    data: IClip;
 }
 
 interface ClipNotExistPageProps {
@@ -75,10 +76,8 @@ function ClipPage() {
             try {
                 const result: GetClipResponse = await getClip(clipName);
                 if (result && "message" in result) {
-                    // Handle error message from server action
                     setError(result.message);
                 } else {
-                    // Set the data if no error
                     setData(result);
                 }
             } catch {
@@ -92,11 +91,7 @@ function ClipPage() {
     }, [clipName]);
 
     if (loading) {
-        return (
-            <div>
-                <LoadingPage />
-            </div>
-        );
+        return <LoadingPage />;
     }
 
     if (error) {
@@ -117,7 +112,6 @@ const ClipExistPage: React.FC<ClipExistPageProps> = ({ clipName, data }) => {
     );
 
     useEffect(() => {
-        // Update the remaining time every second
         const interval = setInterval(() => {
             const newRemainingTime = calculateRemainingTime(data.expireAt);
             setRemainingTime(newRemainingTime);
@@ -127,7 +121,6 @@ const ClipExistPage: React.FC<ClipExistPageProps> = ({ clipName, data }) => {
             }
         }, 1000);
 
-        // Cleanup the interval on component unmount
         return () => clearInterval(interval);
     }, [data.expireAt]);
 
@@ -170,61 +163,67 @@ const ClipExistPage: React.FC<ClipExistPageProps> = ({ clipName, data }) => {
     }
 
     return (
-        <div className="px-20 pt-10">
-            <h1 className="font-bold text-3xl">{clipName}</h1>
+        <div>
+            <Navbar />
+            <div className="px-4 md:px-20 pt-5">
+                <h1 className="font-bold text-3xl">{clipName}</h1>
 
-            <div className="flex gap-6">
-                <div className="w-3/4" id="clip-creation-form">
-                    <div className="space-y-5 mt-1">
-                        <div></div>
-                        <div className="space-y-3">
-                            <h2 className="text-lg font-medium">Validity</h2>
-                            <p>{formatValidity(remainingTime)}</p>
-                        </div>
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-lg font-medium">Text</h2>
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                onClick={() =>
-                                                    copyText(data.text)
-                                                }
-                                            >
-                                                Copy to Clipboard
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>Click to copy</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
+                <div className="flex flex-col md:flex-row gap-6">
+                    <div className="md:w-3/4" id="clip-creation-form">
+                        <div className="space-y-5 mt-1">
+                            <div className="space-y-3">
+                                <h2 className="text-lg font-medium">
+                                    Validity
+                                </h2>
+                                <p>{formatValidity(remainingTime)}</p>
                             </div>
-                            <Textarea
-                                value={data.text}
-                                readOnly
-                                className="resize-none"
-                                rows={20}
-                            />
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-lg font-medium">
+                                        Text
+                                    </h2>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() =>
+                                                        copyText(data.text)
+                                                    }
+                                                >
+                                                    Copy to Clipboard
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>Click to copy</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                </div>
+                                <Textarea
+                                    value={data.text}
+                                    readOnly
+                                    className="resize-none"
+                                    rows={20}
+                                />
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div className="w-1/4 py-6">
-                    <h2 className="text-lg font-medium">Files</h2>
-                    <div className="pt-2">
-                        {uploadedFiles ? (
-                            <div className="space-y-6 w-full">
-                                {uploadedFiles.length > 0 ? (
-                                    <PageExistUploadedFiles
-                                        uploadedFiles={uploadedFiles}
-                                    />
-                                ) : null}
-                            </div>
-                        ) : (
-                            <div>No File</div>
-                        )}
+                    <div className="md:w-1/4 py-6">
+                        <h2 className="text-lg font-medium">Files</h2>
+                        <div className="pt-2">
+                            {uploadedFiles ? (
+                                <div className="space-y-6 w-full">
+                                    {uploadedFiles.length > 0 ? (
+                                        <PageExistUploadedFiles
+                                            uploadedFiles={uploadedFiles}
+                                        />
+                                    ) : null}
+                                </div>
+                            ) : (
+                                <div>No File</div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -243,23 +242,19 @@ const ClipNotExistPage: React.FC<ClipNotExistPageProps> = ({ clipName }) => {
     }, [clipName, form]);
 
     async function onClipSubmit(data: z.infer<typeof FormSchema>) {
-        if (uploadedFiles.length != fileUploadForm.getValues().files.length) {
-            toast.warning("Please upload all files before creating the clip");
-        } else {
-            const formData = {
-                ...data,
-                files: uploadedFiles.map((file) => ({
-                    url: file.url,
-                    key: file.key,
-                    name: file.name,
-                })),
-            };
-            await createClip(formData);
-            toast.success("Clip Created Successfully");
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
-        }
+        const formData = {
+            ...data,
+            files: uploadedFiles.map((file) => ({
+                url: file.url,
+                key: file.key,
+                name: file.name,
+            })),
+        };
+        await createClip(formData);
+        toast.success("Clip Created Successfully");
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
     }
 
     // For: File Upload Form
@@ -301,170 +296,177 @@ const ClipNotExistPage: React.FC<ClipNotExistPageProps> = ({ clipName }) => {
     }
 
     return (
-        <div className="px-20 pt-10">
-            <h1 className="font-bold text-3xl">{clipName}</h1>
+        <div>
+            <Navbar />
+            <div className="px-4 md:px-20 pt-5">
+                <h1 className="font-bold text-3xl">{clipName}</h1>
 
-            <div className="flex gap-6">
-                <div className="w-3/4" id="clip-creation-form">
-                    <Form {...form}>
-                        <form
-                            id="clip-creation-form"
-                            onSubmit={form.handleSubmit(onClipSubmit)}
-                            className="space-y-5 mt-1"
-                        >
-                            <FormField
-                                control={form.control}
-                                name="name"
-                                render={() => (
-                                    <FormItem>
-                                        <FormControl>
-                                            <Input
-                                                style={{ display: "none" }}
-                                                defaultValue={clipName}
-                                            />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="validity"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-lg">
-                                            Validity
-                                        </FormLabel>
-                                        <Select
-                                            onValueChange={field.onChange}
-                                            value={field.value} // Bind the value here
-                                        >
+                <div className="flex flex-col md:flex-row gap-6">
+                    <div className="md:w-3/4" id="clip-creation-form">
+                        <Form {...form}>
+                            <form
+                                onSubmit={form.handleSubmit(onClipSubmit)}
+                                className="space-y-5 mt-1"
+                            >
+                                <FormField
+                                    control={form.control}
+                                    name="name"
+                                    render={() => (
+                                        <FormItem>
                                             <FormControl>
-                                                <SelectTrigger className="w-[250px]">
-                                                    <SelectValue placeholder="Select Validity" />
-                                                </SelectTrigger>
+                                                <Input
+                                                    style={{ display: "none" }}
+                                                    defaultValue={clipName}
+                                                />
                                             </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="60">
-                                                    1 Minute
-                                                </SelectItem>
-                                                <SelectItem value="300">
-                                                    5 Minutes
-                                                </SelectItem>
-                                                <SelectItem value="600">
-                                                    10 Minutes
-                                                </SelectItem>
-                                                <SelectItem value="3600">
-                                                    1 Hour
-                                                </SelectItem>
-                                                <SelectItem value="86400">
-                                                    1 Day
-                                                </SelectItem>
-                                                <SelectItem value="604800">
-                                                    1 Week
-                                                </SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="text"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-lg">
-                                            Text
-                                        </FormLabel>
-                                        <FormControl>
-                                            <Textarea
-                                                placeholder="Write some text to share"
-                                                className="resize-none"
-                                                rows={20}
-                                                {...field}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            type="submit"
-                                            className="w-full"
-                                            variant="secondary"
-                                        >
-                                            Create Clip
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Click to create clip</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        </form>
-                    </Form>
-                </div>
-                <div className="w-1/4 py-6">
-                    <Form {...fileUploadForm}>
-                        <form
-                            id="file-upload-form"
-                            onSubmit={fileUploadForm.handleSubmit(onFileSubmit)}
-                            className="flex w-full flex-col gap-6"
-                        >
-                            <FormField
-                                control={fileUploadForm.control}
-                                name="files"
-                                render={({ field }) => (
-                                    <div className="space-y-6">
-                                        <FormItem className="w-full">
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="validity"
+                                    render={({ field }) => (
+                                        <FormItem>
                                             <FormLabel className="text-lg">
-                                                Files
+                                                Validity
+                                            </FormLabel>
+                                            <Select
+                                                onValueChange={field.onChange}
+                                                value={field.value} // Bind the value here
+                                            >
+                                                <FormControl>
+                                                    <SelectTrigger className="w-[250px]">
+                                                        <SelectValue placeholder="Select Validity" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="60">
+                                                        1 Minute
+                                                    </SelectItem>
+                                                    <SelectItem value="300">
+                                                        5 Minutes
+                                                    </SelectItem>
+                                                    <SelectItem value="600">
+                                                        10 Minutes
+                                                    </SelectItem>
+                                                    <SelectItem value="3600">
+                                                        1 Hour
+                                                    </SelectItem>
+                                                    <SelectItem value="86400">
+                                                        1 Day
+                                                    </SelectItem>
+                                                    <SelectItem value="604800">
+                                                        1 Week
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="text"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-lg">
+                                                Text
                                             </FormLabel>
                                             <FormControl>
-                                                <FileUploader
-                                                    value={field.value}
-                                                    onValueChange={
-                                                        field.onChange
-                                                    }
-                                                    maxFileCount={4}
-                                                    maxSize={4 * 1024 * 1024}
-                                                    progresses={progresses}
-                                                    disabled={isUploading}
+                                                <Textarea
+                                                    placeholder="Write some text to share"
+                                                    className="resize-none"
+                                                    rows={17}
+                                                    {...field}
                                                 />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
-                                        {uploadedFiles.length > 0 ? (
-                                            <PageExistUploadedFiles
-                                                uploadedFiles={uploadedFiles}
-                                            />
-                                        ) : null}
-                                    </div>
-                                )}
-                            />
+                                    )}
+                                />
 
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            disabled={loading}
-                                        >
-                                            Upload
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Upload files</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        </form>
-                    </Form>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                type="submit"
+                                                className="w-full"
+                                                variant="secondary"
+                                            >
+                                                Create Clip
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Click to create clip</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </form>
+                        </Form>
+                    </div>
+                    <div className="md:w-1/4 py-6">
+                        <Form {...fileUploadForm}>
+                            <form
+                                onSubmit={fileUploadForm.handleSubmit(
+                                    onFileSubmit
+                                )}
+                                className="flex w-full flex-col gap-6"
+                            >
+                                <FormField
+                                    control={fileUploadForm.control}
+                                    name="files"
+                                    render={({ field }) => (
+                                        <div className="space-y-6">
+                                            <FormItem className="w-full">
+                                                <FormLabel className="text-lg">
+                                                    Files
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <FileUploader
+                                                        value={field.value}
+                                                        onValueChange={
+                                                            field.onChange
+                                                        }
+                                                        maxFileCount={4}
+                                                        maxSize={
+                                                            4 * 1024 * 1024
+                                                        }
+                                                        progresses={progresses}
+                                                        disabled={isUploading}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                            {uploadedFiles.length > 0 ? (
+                                                <PageExistUploadedFiles
+                                                    uploadedFiles={
+                                                        uploadedFiles
+                                                    }
+                                                />
+                                            ) : null}
+                                        </div>
+                                    )}
+                                />
+
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                disabled={loading}
+                                            >
+                                                Upload
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Upload files</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </form>
+                        </Form>
+                    </div>
                 </div>
             </div>
         </div>
