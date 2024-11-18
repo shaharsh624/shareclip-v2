@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     metadataBase: new URL("https://shareclip.harshshah.me"),
     title: "Shareclip",
     icons: {
-        icon: "/logo.svg",
+        icon: "/logo-2.svg",
     },
     description: "A Secure Temporary Sharing App",
     openGraph: {

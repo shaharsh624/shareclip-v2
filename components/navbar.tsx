@@ -8,12 +8,12 @@ const Navbar = () => {
         <header className="px-4 lg:px-10 h-14 flex items-center w-full pt-5">
             <Link className="flex items-center" href="/">
                 <Image
-                    src="/logo.svg"
-                    alt="Shareclip Logo"
-                    width="20"
-                    height="20"
+                    src="/logo-2.svg"
+                    alt="Shareclip"
+                    width="24"
+                    height="22"
                 />
-                <span className="ml-2 text-2xl font-bold">Shareclip</span>
+                <span className="ml-1 text-2xl font-bold">Shareclip</span>
             </Link>
             <nav className="ml-auto flex gap-4 sm:gap-6">
                 <ModeToggle />

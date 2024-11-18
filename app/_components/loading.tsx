@@ -1,14 +1,19 @@
 "use client";
 
-import { Clipboard } from "lucide-react";
+import logo from "../../public/logo-2.svg";
+import Image from "next/image";
 
 export default function LoadingPage() {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground">
             <div className="text-center space-y-8 w-full max-w-md px-4">
                 <div className="flex items-center justify-center mb-8">
-                    <Clipboard className="h-16 w-16 text-primary" />
-                    <span className="ml-4 text-4xl font-bold">Shareclip</span>
+                    <Image
+                        src={logo}
+                        alt="Shareclip Logo"
+                        className="h-12 w-12"
+                    />
+                    <span className="ml-1 text-4xl font-bold">Shareclip</span>
                 </div>
 
                 <p className="text-lg text-muted-foreground">
