@@ -14,6 +14,7 @@ export interface IFormData {
     validity: string;
     text?: string;
     files?: IFile[];
+    password?: string;
 }
 
 export interface IClipError {
@@ -27,6 +28,7 @@ export const createClip = async (formData: IFormData) => {
     const name = formData["name"];
     const validity = Number(formData["validity"]);
     const text = formData["text"];
+    const password = formData["password"];
     const files = formData["files"];
     const expireAt = new Date(Date.now() + validity * 1000);
     try {
@@ -34,6 +36,7 @@ export const createClip = async (formData: IFormData) => {
             name,
             validity,
             text,
+            password,
             files,
             expireAt,
         });

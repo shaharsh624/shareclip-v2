@@ -12,6 +12,7 @@ export interface IClip {
     text: string;
     files?: IFile[];
     expireAt: Date;
+    password?: string;
 }
 
 export interface IClipDocument extends IClip, Document {
@@ -55,6 +56,10 @@ const clipSchema = new mongoose.Schema<IClipDocument>(
         expireAt: {
             type: Date,
             required: true,
+        },
+        password: {
+            type: String,
+            required: false,
         },
     },
     {

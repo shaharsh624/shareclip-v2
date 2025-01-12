@@ -39,7 +39,26 @@ import {
     TooltipTrigger,
     TooltipContent,
 } from "@/components/ui/tooltip";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogContent,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 import Navbar from "@/components/navbar";
+// import { Lock, LockKeyhole } from "lucide-react";
+import { Label } from "@/components/ui/label";
 
 const FormSchema = z.object({
     name: z.string(),
@@ -69,6 +88,12 @@ function ClipPage() {
     const [data, setData] = useState<IClip | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [passwordVerified, setPasswordVerified] = useState(false); // New state to track password verification
+
+    const openDialogExternally = () => {
+        setIsDialogOpen(true);
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -84,6 +109,7 @@ function ClipPage() {
                 setError("An unexpected error occurred.");
             } finally {
                 setLoading(false);
+                openDialogExternally();
             }
         };
 
@@ -98,12 +124,81 @@ function ClipPage() {
         return <div>Error: {error}</div>;
     }
 
-    return data ? (
-        <ClipExistPage clipName={clipName} data={data} />
-    ) : (
-        <ClipNotExistPage clipName={clipName} />
-    );
+    if (data) {
+        if (data?.password && !passwordVerified) {
+            // Show dialog if password is required and not verified
+            return (
+                <CustomAlertDialog
+                    isOpen={isDialogOpen}
+                    password={data?.password}
+                    clipName={clipName}
+                    data={data}
+                    onPasswordCorrect={() => {
+                        setPasswordVerified(true); // Set password as verified
+                        setIsDialogOpen(false); // Close dialog
+                    }} // Callback to verify password
+                />
+            );
+        } else {
+            return <ClipExistPage clipName={clipName} data={data} />;
+        }
+    } else {
+        return <ClipNotExistPage clipName={clipName} />;
+    }
 }
+
+const CustomAlertDialog: React.FC<{
+    password?: string;
+    isOpen: boolean;
+    clipName: string;
+    data: IClip;
+    onPasswordCorrect: () => void; // Add callback for password verification
+}> = ({ password, isOpen, clipName, onPasswordCorrect }) => {
+    const [passwordEntered, setPasswordEntered] = useState("");
+
+    function checkPassword() {
+        if (password === passwordEntered) {
+            console.log("Password Correct");
+            onPasswordCorrect(); // Call the callback to indicate password is correct
+        } else {
+            console.log("Password Incorrect");
+        }
+    }
+
+    return (
+        <AlertDialog open={isOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>
+                        Enter Password to access clip {clipName}
+                    </AlertDialogTitle>
+                </AlertDialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="password" className="text-right">
+                            Password
+                        </Label>
+                        <Input
+                            id="password"
+                            type="text"
+                            placeholder="Secure123$"
+                            className="col-span-3"
+                            value={passwordEntered}
+                            onChange={(e) => {
+                                setPasswordEntered(e.target.value);
+                            }}
+                        />
+                    </div>
+                </div>
+                <AlertDialogFooter>
+                    <Button type="button" onClick={checkPassword}>
+                        Access Clip
+                    </Button>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    );
+};
 
 const ClipExistPage: React.FC<ClipExistPageProps> = ({ clipName, data }) => {
     const [uploadedFiles] = useState(data.files);
@@ -233,6 +328,9 @@ const ClipExistPage: React.FC<ClipExistPageProps> = ({ clipName, data }) => {
 
 const ClipNotExistPage: React.FC<ClipNotExistPageProps> = ({ clipName }) => {
     // For: Main Clip Creation Form
+
+    const [password, setPassword] = useState("");
+
     const form = useForm<z.infer<typeof FormSchema>>({
         resolver: zodResolver(FormSchema),
     });
@@ -244,6 +342,7 @@ const ClipNotExistPage: React.FC<ClipNotExistPageProps> = ({ clipName }) => {
     async function onClipSubmit(data: z.infer<typeof FormSchema>) {
         const formData = {
             ...data,
+            password: password,
             files: uploadedFiles.map((file) => ({
                 url: file.url,
                 key: file.key,
@@ -358,6 +457,9 @@ const ClipNotExistPage: React.FC<ClipNotExistPageProps> = ({ clipName }) => {
                                                     <SelectItem value="604800">
                                                         1 Week
                                                     </SelectItem>
+                                                    <SelectItem value="2592000">
+                                                        1 Month
+                                                    </SelectItem>
                                                 </SelectContent>
                                             </Select>
                                             <FormMessage />
@@ -385,22 +487,61 @@ const ClipNotExistPage: React.FC<ClipNotExistPageProps> = ({ clipName }) => {
                                     )}
                                 />
 
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
+                                <Dialog>
+                                    <DialogTrigger asChild>
+                                        <Button
+                                            className="w-full"
+                                            variant="secondary"
+                                        >
+                                            Create Clip
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-[425px]">
+                                        <DialogHeader>
+                                            <DialogTitle>
+                                                Want to Secure Clip with a
+                                                password?
+                                            </DialogTitle>
+                                            <DialogDescription>
+                                                Please remember this password,
+                                                or you will not be able to
+                                                access this clip!
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <div className="grid gap-4 py-4">
+                                            <div className="grid grid-cols-4 items-center gap-4">
+                                                <Label
+                                                    htmlFor="password"
+                                                    className="text-right"
+                                                >
+                                                    Password
+                                                </Label>
+                                                <Input
+                                                    id="password"
+                                                    type="text"
+                                                    placeholder="Secure123$"
+                                                    className="col-span-3"
+                                                    value={password}
+                                                    onChange={(e) => {
+                                                        setPassword(
+                                                            e.target.value
+                                                        );
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                        <DialogFooter>
                                             <Button
                                                 type="submit"
-                                                className="w-full"
-                                                variant="secondary"
+                                                onClick={form.handleSubmit(
+                                                    onClipSubmit
+                                                )}
                                             >
                                                 Create Clip
                                             </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>Click to create clip</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
                             </form>
                         </Form>
                     </div>
