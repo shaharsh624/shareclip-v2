@@ -304,22 +304,18 @@ const ClipExistPage: React.FC<ClipExistPageProps> = ({ clipName, data }) => {
                             </div>
                         </div>
                     </div>
-                    <div className="md:w-1/4 py-6">
-                        <h2 className="text-lg font-medium">Files</h2>
-                        <div className="pt-2">
-                            {uploadedFiles ? (
+                    {uploadedFiles && uploadedFiles.length > 0 ? (
+                        <div className="md:w-1/4 py-6">
+                            <h2 className="text-lg font-medium">Files</h2>
+                            <div className="pt-2">
                                 <div className="space-y-6 w-full">
-                                    {uploadedFiles.length > 0 ? (
-                                        <PageExistUploadedFiles
-                                            uploadedFiles={uploadedFiles}
-                                        />
-                                    ) : null}
+                                    <PageExistUploadedFiles
+                                        uploadedFiles={uploadedFiles}
+                                    />
                                 </div>
-                            ) : (
-                                <div>No File</div>
-                            )}
+                            </div>
                         </div>
-                    </div>
+                    ) : null}
                 </div>
             </div>
         </div>
