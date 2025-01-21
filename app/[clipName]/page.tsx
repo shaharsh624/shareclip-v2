@@ -180,7 +180,7 @@ const CustomAlertDialog: React.FC<{
                         </Label>
                         <Input
                             id="password"
-                            type="text"
+                            type="password"
                             placeholder="Secure123$"
                             className="col-span-3"
                             value={passwordEntered}
@@ -514,7 +514,7 @@ const ClipNotExistPage: React.FC<ClipNotExistPageProps> = ({ clipName }) => {
                                                 </Label>
                                                 <Input
                                                     id="password"
-                                                    type="text"
+                                                    type="password"
                                                     placeholder="Secure123$"
                                                     className="col-span-3"
                                                     value={password}
