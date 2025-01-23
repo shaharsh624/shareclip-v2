@@ -105,6 +105,7 @@ export function FileUploader(props: FileUploaderProps) {
                 [".docx"],
             "application/msword": [".doc"],
             "text/plain": [".txt"],
+            "application/zip": [".zip"],
         },
         maxSize = 1024 * 1024 * 2,
         maxFileCount = 1,

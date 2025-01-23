@@ -17,6 +17,10 @@ export const ourFileRouter = {
             maxFileSize: "4MB",
             maxFileCount: 8,
         },
+        "application/zip": {
+            maxFileSize: "4MB",
+            maxFileCount: 1,
+        },
     })
         .middleware(async () => {
             const user = await auth();
