@@ -10,16 +10,16 @@ async function auth() {
 
 export const ourFileRouter = {
     fileUploader: f({
-        text: { maxFileSize: "4MB", maxFileCount: 8 },
-        image: { maxFileSize: "4MB", maxFileCount: 8 },
-        pdf: { maxFileSize: "4MB", maxFileCount: 8 },
+        text: { maxFileSize: "128MB", maxFileCount: 8 },
+        image: { maxFileSize: "128MB", maxFileCount: 8 },
+        pdf: { maxFileSize: "128MB", maxFileCount: 8 },
         "application/vnd.ms-powerpoint": {
-            maxFileSize: "4MB",
+            maxFileSize: "128MB",
             maxFileCount: 8,
         },
         "application/zip": {
-            maxFileSize: "4MB",
-            maxFileCount: 1,
+            maxFileSize: "128MB",
+            maxFileCount: 8,
         },
     })
         .middleware(async () => {
