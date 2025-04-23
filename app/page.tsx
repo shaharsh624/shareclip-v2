@@ -55,7 +55,7 @@ export default function Home() {
             </main>
             <footer className="flex gap-2 sm:flex-row py-4 w-full items-center px-4 border-t">
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                    © 2024 Harsh Shah. All rights reserved.
+                    Developed by Harsh Shah
                 </p>
                 <nav className="ml-auto flex gap-4">
                     <Link
