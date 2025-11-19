@@ -1,13 +1,12 @@
 "use client";
 import { motion } from "framer-motion";
-import { ArrowRight, Circle, IconNode } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import Image from "next/image";
 import Link from "next/link";
-import { IconProps, Icons } from "@/components/icons";
+import { Icons } from "@/components/icons";
 type ElegantShapeProps = {
     className?: string;
     delay?: number;
@@ -192,7 +191,11 @@ export default function Home({
                 <div className="max-w-3xl mx-auto text-center">
                     <div className="hidden sm:block flex gap-3 justify-center">
                         {badges.map((badge) => (
-                            <Link href={badge.url} target="_blank">
+                            <Link
+                                key={badge.name}
+                                href={badge.url}
+                                target="_blank"
+                            >
                                 <motion.div
                                     custom={0}
                                     variants={fadeUpVariants}

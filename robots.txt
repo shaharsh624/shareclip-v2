@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+# Block internal Next.js paths
+Disallow: /_next/
+Disallow: /api/
+
+# If you generate static assets
+Allow: /_next/static/
+
+Sitemap: https://yourdomain.com/sitemap.xml
