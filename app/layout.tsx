@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     description: "A Secure Temporary Sharing App",
     openGraph: {
         title: "Shareclip",
-        description: "A Secure Temporary Sharing App",
+        description: "A Free & Secure Temporary Sharing App",
         url: "https://shareclip.harshshah.me",
         siteName: "Shareclip",
         locale: "en_US",
@@ -63,7 +63,6 @@ export default function RootLayout({
                 <ThemeProvider
                     attribute="class"
                     defaultTheme="dark"
-                    enableSystem
                     disableTransitionOnChange
                 >
                     {children}
