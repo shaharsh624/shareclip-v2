@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { usePathname } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,6 +14,7 @@ import {
 import { getErrorMessage } from "@/lib/handle-error";
 import { z } from "zod";
 import { IClip } from "@/models/clipModel";
+import { useTheme } from "next-themes";
 
 import LoadingPage from "../_components/loading";
 import { FileUploader } from "@/components/file-uploader";
@@ -74,8 +75,30 @@ import {
     ShieldCheck,
     ExternalLink,
     Loader2,
+    Link2,
+    QrCode,
+    CalendarIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { format, addMinutes } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+
+import SyntaxHighlighter from "react-syntax-highlighter";
+import {
+    atomOneDark,
+    atomOneLight,
+} from "react-syntax-highlighter/dist/esm/styles/hljs";
+import hljs from "highlight.js";
+import { QRCodeSVG } from "qrcode.react";
+
+/* ─────────────────────────────────────────────
+   Helpers
+───────────────────────────────────────────── */
 
 /** Returns the URL if the entire text is a single valid http/https URL, else null */
 function isOnlyUrl(text: string | undefined): string | null {
@@ -92,6 +115,122 @@ function isOnlyUrl(text: string | undefined): string | null {
     return null;
 }
 
+/** Auto-detect language using highlight.js */
+function detectLanguage(text: string): string {
+    if (!text || text.length < 10) return "plaintext";
+    try {
+        const result = hljs.highlightAuto(text, [
+            "javascript",
+            "typescript",
+            "python",
+            "json",
+            "html",
+            "css",
+            "bash",
+            "shell",
+            "sql",
+            "markdown",
+            "xml",
+            "yaml",
+            "rust",
+            "go",
+            "java",
+            "cpp",
+            "c",
+            "php",
+            "ruby",
+            "swift",
+            "kotlin",
+            "scala",
+            "r",
+            "dart",
+        ]);
+        return result.language || "plaintext";
+    } catch {
+        return "plaintext";
+    }
+}
+
+/* ─────────────────────────────────────────────
+   Shadcn DateTimePicker
+   Combines a Calendar popover for the date with
+   a time input inside the same popover.
+───────────────────────────────────────────── */
+const DateTimePicker: React.FC<{
+    value: Date | undefined;
+    onChange: (date: Date | undefined) => void;
+    minDate?: Date;
+}> = ({ value, onChange, minDate }) => {
+    const [open, setOpen] = useState(false);
+    const [timeStr, setTimeStr] = useState(() =>
+        value
+            ? format(value, "HH:mm")
+            : format(addMinutes(new Date(), 5), "HH:mm"),
+    );
+
+    function handleDaySelect(day: Date | undefined) {
+        if (!day) {
+            onChange(undefined);
+            return;
+        }
+        const [h, m] = timeStr.split(":").map(Number);
+        const combined = new Date(day);
+        combined.setHours(h, m, 0, 0);
+        onChange(combined);
+    }
+
+    function handleTimeChange(e: React.ChangeEvent<HTMLInputElement>) {
+        setTimeStr(e.target.value);
+        if (!value) return;
+        const [h, m] = e.target.value.split(":").map(Number);
+        const updated = new Date(value);
+        updated.setHours(h, m, 0, 0);
+        onChange(updated);
+    }
+
+    const displayLabel = value
+        ? format(value, "MMM d, yyyy 'at' h:mm a")
+        : "Pick a date & time";
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button
+                    variant="outline"
+                    className={`w-[240px] justify-start gap-2 text-left font-normal rounded-lg \${!value ? "text-muted-foreground" : ""}`}
+                >
+                    <CalendarIcon className="w-4 h-4 shrink-0" />
+                    {displayLabel}
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                    mode="single"
+                    selected={value}
+                    onSelect={handleDaySelect}
+                    disabled={(d) => (minDate ? d < minDate : false)}
+                    initialFocus
+                />
+                <div className="border-t border-border px-3 py-3 flex items-center gap-3">
+                    <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <label className="text-xs text-muted-foreground">
+                        Time
+                    </label>
+                    <input
+                        type="time"
+                        value={timeStr}
+                        onChange={handleTimeChange}
+                        className="ml-auto h-8 rounded-md border border-input bg-input px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 focus:ring-offset-background"
+                    />
+                </div>
+            </PopoverContent>
+        </Popover>
+    );
+};
+
+/* ─────────────────────────────────────────────
+   Schemas
+───────────────────────────────────────────── */
 const FormSchema = z.object({
     name: z.string(),
     validity: z.string().nonempty("Please select the validity"),
@@ -108,49 +247,35 @@ interface ClipExistPageProps {
     clipName: string;
     data: IClip;
 }
-
 interface ClipNotExistPageProps {
     clipName: string;
 }
 
 /* ─────────────────────────────────────────────
-   Root: two-step secure fetch
-   Step 1 — getClipMeta: learns only whether the
-            clip exists and whether it needs a password.
-            No content ever reaches the client here.
-   Step 2 — getClipContent: called only after the
-            password is verified SERVER-SIDE.
-            Content is returned only on success.
+   Root — two-step secure fetch
 ───────────────────────────────────────────── */
 function ClipPage() {
     const pathname = usePathname();
     const clipName = pathname.replace("/", "");
 
-    // Step 1 state — metadata only
     const [meta, setMeta] = useState<IClipMeta | null>(null);
     const [metaLoading, setMetaLoading] = useState(true);
     const [metaError, setMetaError] = useState<string | null>(null);
-
-    // Step 2 state — full content, only populated after auth
     const [clipData, setClipData] = useState<IClip | null>(null);
     const [contentLoading, setContentLoading] = useState(false);
 
-    // Step 1: fetch metadata on mount
     useEffect(() => {
         const fetchMeta = async () => {
             setMetaLoading(true);
             try {
                 const result = await getClipMeta(clipName);
                 if (!result) {
-                    setMeta(null); // clip doesn't exist → create page
+                    setMeta(null);
                 } else if ("message" in result) {
                     setMetaError(result.message);
                 } else {
                     setMeta(result);
-                    // If no password, immediately fetch content
-                    if (!result.hasPassword) {
-                        fetchContent(undefined);
-                    }
+                    if (!result.hasPassword) fetchContent(undefined);
                 }
             } catch {
                 setMetaError("An unexpected error occurred.");
@@ -162,7 +287,6 @@ function ClipPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [clipName]);
 
-    // Step 2: fetch full content — only called when password is correct (or absent)
     const fetchContent = async (password: string | undefined) => {
         setContentLoading(true);
         try {
@@ -170,7 +294,6 @@ function ClipPage() {
             if (!result) {
                 setClipData(null);
             } else if ("message" in result) {
-                // Wrong password comes back here
                 return result.message;
             } else {
                 setClipData(result as unknown as IClip);
@@ -183,31 +306,244 @@ function ClipPage() {
         return null;
     };
 
-    // ── Loading states ──
     if (metaLoading) return <LoadingPage />;
     if (metaError)
         return <div className="p-8 text-destructive">Error: {metaError}</div>;
-
-    // ── Clip doesn't exist → creation page ──
     if (!meta) return <ClipNotExistPage clipName={clipName} />;
-
-    // ── Content still loading (no-password clip, waiting for step 2) ──
     if (contentLoading || (!clipData && !meta.hasPassword))
         return <LoadingPage />;
-
-    // ── Password required, content not yet fetched → show lock screen ──
     if (meta.hasPassword && !clipData) {
         return <PasswordGate clipName={clipName} onUnlock={fetchContent} />;
     }
-
-    // ── Unlocked — show full clip ──
     return <ClipExistPage clipName={clipName} data={clipData!} />;
 }
 
 /* ─────────────────────────────────────────────
+   QR Code Dialog
+───────────────────────────────────────────── */
+const QRDialog: React.FC<{ url: string; clipName: string }> = ({
+    url,
+    clipName,
+}) => {
+    return (
+        <Dialog>
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <DialogTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-2"
+                            >
+                                <QrCode className="w-3.5 h-3.5" />
+                                QR
+                            </Button>
+                        </DialogTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>Show QR code for this clip</TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+            <DialogContent className="sm:max-w-[320px] rounded-2xl">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-base">
+                        <QrCode className="w-4 h-4 text-muted-foreground" />
+                        Scan to open
+                    </DialogTitle>
+                </DialogHeader>
+                <div className="flex flex-col items-center gap-4 py-2">
+                    <div className="p-4 bg-white rounded-xl border border-border">
+                        <QRCodeSVG
+                            value={url}
+                            size={200}
+                            bgColor="#ffffff"
+                            fgColor="#0f0f0f"
+                            level="M"
+                        />
+                    </div>
+                    <p className="text-xs text-muted-foreground font-mono text-center break-all px-2">
+                        {clipName}
+                    </p>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+/* ─────────────────────────────────────────────
+   Copy Link Button
+───────────────────────────────────────────── */
+const CopyLinkButton: React.FC = () => {
+    const [copied, setCopied] = useState(false);
+
+    function copyLink() {
+        navigator.clipboard.writeText(window.location.href);
+        setCopied(true);
+        toast.success("Link copied to clipboard");
+        setTimeout(() => setCopied(false), 2000);
+    }
+
+    return (
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={copyLink}
+                        className={`gap-2 transition-all ${copied ? "border-emerald-500/50 text-emerald-400" : ""}`}
+                    >
+                        {copied ? (
+                            <Check className="w-3.5 h-3.5" />
+                        ) : (
+                            <Link2 className="w-3.5 h-3.5" />
+                        )}
+                        {copied ? "Copied!" : "Copy Link"}
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent>Copy shareable link</TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+    );
+};
+
+/* ─────────────────────────────────────────────
+   Syntax-highlighted content viewer
+───────────────────────────────────────────── */
+const SyntaxContent: React.FC<{ text: string }> = ({ text }) => {
+    const { resolvedTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => setMounted(true), []);
+
+    const language = useMemo(() => detectLanguage(text), [text]);
+    const isDark = !mounted || resolvedTheme === "dark";
+
+    return (
+        <div className="flex-1 min-h-0 flex flex-col relative rounded-xl border border-border bg-muted/30 overflow-hidden">
+            {/* Language badge */}
+            <div className="shrink-0 flex items-center justify-between px-4 py-1.5 border-b border-border/50 bg-muted/50">
+                <span className="text-xs font-mono text-muted-foreground">
+                    {language}
+                </span>
+            </div>
+            {/* Highlighted code */}
+            <div className="flex-1 min-h-0 overflow-auto">
+                <SyntaxHighlighter
+                    language={language}
+                    style={isDark ? atomOneDark : atomOneLight}
+                    customStyle={{
+                        margin: 0,
+                        padding: "1.25rem",
+                        background: "transparent",
+                        fontSize: "0.8125rem",
+                        lineHeight: "1.6",
+                        height: "100%",
+                        minHeight: "100%",
+                    }}
+                    wrapLongLines={false}
+                >
+                    {text}
+                </SyntaxHighlighter>
+            </div>
+        </div>
+    );
+};
+
+/* ─────────────────────────────────────────────
+   URL Redirect View (one-click URL shortener)
+   Shown when the entire clip content is a URL
+───────────────────────────────────────────── */
+const UrlRedirectView: React.FC<{
+    url: string;
+    clipName: string;
+    remainingTime: number;
+    expiresAt: string;
+    urgency: "critical" | "warning" | "normal";
+    urgencyColors: Record<string, string>;
+    formatTime: (s: number) => string;
+}> = ({ url, clipName }) => {
+    const [copied, setCopied] = useState(false);
+    const pageUrl = typeof window !== "undefined" ? window.location.href : "";
+
+    function copyUrl() {
+        navigator.clipboard.writeText(url);
+        setCopied(true);
+        toast.success("URL copied");
+        setTimeout(() => setCopied(false), 2000);
+    }
+
+    return (
+        <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-8 py-4">
+            {/* URL card */}
+            <div className="w-full max-w-2xl rounded-2xl border border-border bg-card p-8 flex flex-col items-center gap-6 shadow-lg">
+                {/* Icon + hostname */}
+                <div className="flex flex-col items-center gap-3">
+                    <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                        <ExternalLink className="w-7 h-7 text-emerald-400" />
+                    </div>
+                    <div className="text-center">
+                        <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider font-medium">
+                            Redirection Detected
+                        </p>
+                        <h2 className="text-lg font-bold font-mono text-foreground">
+                            {clipName}
+                        </h2>
+                        <p className="text-sm text-muted-foreground mt-1">
+                            redirects to
+                        </p>
+                    </div>
+                </div>
+
+                {/* Full URL display */}
+                <div className="w-full rounded-xl border border-border bg-muted/40 px-4 py-3 flex items-center gap-3">
+                    <Link2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <p className="text-sm font-mono text-foreground/80 truncate flex-1">
+                        {url}
+                    </p>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex gap-3 flex-wrap justify-center">
+                    <Button
+                        asChild
+                        className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white h-11 px-8 text-base font-semibold"
+                    >
+                        <Link
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            <ExternalLink className="w-4 h-4" />
+                            Open Link
+                        </Link>
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={copyUrl}
+                        className={`gap-2 h-11 ${copied ? "border-emerald-500/50 text-emerald-400" : ""}`}
+                    >
+                        {copied ? (
+                            <Check className="w-4 h-4" />
+                        ) : (
+                            <Copy className="w-4 h-4" />
+                        )}
+                        {copied ? "Copied!" : "Copy URL"}
+                    </Button>
+                </div>
+
+                {/* Timer + QR row */}
+                <div className="flex items-center gap-4 flex-wrap justify-center">
+                    <QRDialog url={pageUrl} clipName={clipName} />
+                    <CopyLinkButton />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+/* ─────────────────────────────────────────────
    Password Gate
-   Calls getClipContent server-side on submit.
-   Content is only shown on server-verified success.
 ───────────────────────────────────────────── */
 const PasswordGate: React.FC<{
     clipName: string;
@@ -227,7 +563,6 @@ const PasswordGate: React.FC<{
             setWrong(true);
             setTimeout(() => setWrong(false), 800);
         }
-        // On success, parent state update re-renders automatically
     }
 
     return (
@@ -257,9 +592,7 @@ const PasswordGate: React.FC<{
                         id="password"
                         type="password"
                         placeholder="Enter password…"
-                        className={`transition-all duration-200 ${
-                            wrong ? "border-red-500 ring-1 ring-red-500" : ""
-                        }`}
+                        className={`transition-all duration-200 ${wrong ? "border-red-500 ring-1 ring-red-500" : ""}`}
                         value={passwordEntered}
                         onChange={(e) => setPasswordEntered(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
@@ -332,7 +665,6 @@ const ClipExistPage: React.FC<ClipExistPageProps> = ({ clipName, data }) => {
             : remainingTime < 3600
               ? "warning"
               : "normal";
-
     const urgencyColors = {
         critical: "text-red-400 bg-red-500/10 border-red-500/20",
         warning: "text-amber-400 bg-amber-500/10 border-amber-500/20",
@@ -357,6 +689,64 @@ const ClipExistPage: React.FC<ClipExistPageProps> = ({ clipName, data }) => {
         minute: "2-digit",
     });
 
+    const urlOnly = isOnlyUrl(data.text);
+    const hasFiles = uploadedFiles && uploadedFiles.length > 0;
+    const pageUrl = typeof window !== "undefined" ? window.location.href : "";
+
+    // URL-only clips get a special redirect page — but only if there are no files.
+    // If files are present alongside a URL, show the normal clip view instead.
+    if (urlOnly && !hasFiles) {
+        return (
+            <div className="h-screen overflow-hidden flex flex-col bg-background">
+                <Navbar />
+                <div className="flex-1 min-h-0 overflow-hidden">
+                    <div className="h-full max-w-7xl mx-auto px-4 md:px-8 py-6 flex flex-col gap-4">
+                        {/* Header */}
+                        <div className="shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
+                                <Link
+                                    href="https://shareclip.harshshah.me"
+                                    target="_blank"
+                                >
+                                    <span className="text-xs font-mono text-muted-foreground lowercase tracking-widest hover:text-foreground transition-colors hover:underline">
+                                        shareclip.harshshah.me/
+                                    </span>
+                                </Link>
+                                <h1 className="text-2xl font-bold tracking-tight font-mono leading-tight">
+                                    {clipName}
+                                </h1>
+                            </div>
+                            <div
+                                className={`inline-flex items-center gap-2.5 px-4 py-2 rounded-xl border text-sm font-medium shrink-0 ${urgencyColors[urgency]}`}
+                            >
+                                <Timer className="w-4 h-4 shrink-0" />
+                                <div className="flex flex-col leading-tight">
+                                    <span className="font-semibold tabular-nums">
+                                        {formatTime(remainingTime)}
+                                    </span>
+                                    <span className="text-xs opacity-70 font-normal">
+                                        Expires {expiresAt}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="shrink-0 h-px bg-border" />
+                        <UrlRedirectView
+                            url={urlOnly}
+                            clipName={clipName}
+                            remainingTime={remainingTime}
+                            expiresAt={expiresAt}
+                            urgency={urgency}
+                            urgencyColors={urgencyColors}
+                            formatTime={formatTime}
+                        />
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Normal clip — syntax-highlighted content + optional files sidebar
     return (
         <div className="h-screen overflow-hidden flex flex-col bg-background">
             <Navbar />
@@ -377,17 +767,22 @@ const ClipExistPage: React.FC<ClipExistPageProps> = ({ clipName, data }) => {
                                 {clipName}
                             </h1>
                         </div>
-                        <div
-                            className={`inline-flex items-center gap-2.5 px-4 py-2 rounded-xl border text-sm font-medium shrink-0 ${urgencyColors[urgency]}`}
-                        >
-                            <Timer className="w-4 h-4 shrink-0" />
-                            <div className="flex flex-col leading-tight">
-                                <span className="font-semibold tabular-nums">
-                                    {formatTime(remainingTime)}
-                                </span>
-                                <span className="text-xs opacity-70 font-normal">
-                                    Expires {expiresAt}
-                                </span>
+                        {/* Header action buttons */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <CopyLinkButton />
+                            <QRDialog url={pageUrl} clipName={clipName} />
+                            <div
+                                className={`inline-flex items-center gap-2.5 px-4 py-2 rounded-xl border text-sm font-medium shrink-0 ${urgencyColors[urgency]}`}
+                            >
+                                <Timer className="w-4 h-4 shrink-0" />
+                                <div className="flex flex-col leading-tight">
+                                    <span className="font-semibold tabular-nums">
+                                        {formatTime(remainingTime)}
+                                    </span>
+                                    <span className="text-xs opacity-70 font-normal">
+                                        Expires {expiresAt}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -396,10 +791,10 @@ const ClipExistPage: React.FC<ClipExistPageProps> = ({ clipName, data }) => {
 
                     {/* Grid */}
                     <div
-                        className={`flex-1 min-h-0 grid gap-6 ${uploadedFiles && uploadedFiles.length > 0 ? "grid-cols-1 lg:grid-cols-3" : "grid-cols-1"}`}
+                        className={`flex-1 min-h-0 grid gap-6 ${hasFiles ? "grid-cols-1 lg:grid-cols-3" : "grid-cols-1"}`}
                     >
                         <div
-                            className={`flex flex-col min-h-0 gap-3 ${uploadedFiles && uploadedFiles.length > 0 ? "lg:col-span-2" : ""}`}
+                            className={`flex flex-col min-h-0 gap-3 ${hasFiles ? "lg:col-span-2" : ""}`}
                         >
                             {/* Toolbar */}
                             <div className="shrink-0 flex items-center justify-between">
@@ -430,7 +825,7 @@ const ClipExistPage: React.FC<ClipExistPageProps> = ({ clipName, data }) => {
                                                             rel="noopener noreferrer"
                                                         >
                                                             <ExternalLink className="w-3.5 h-3.5" />
-                                                            Redirect
+                                                            Open Link
                                                         </Link>
                                                     </Button>
                                                 </TooltipTrigger>
@@ -467,26 +862,21 @@ const ClipExistPage: React.FC<ClipExistPageProps> = ({ clipName, data }) => {
                                 </div>
                             </div>
 
-                            {/* Textarea */}
-                            <div className="flex-1 min-h-0 relative rounded-xl border border-border bg-muted/30 overflow-hidden">
-                                <Textarea
-                                    value={data.text || ""}
-                                    readOnly
-                                    className="h-full w-full resize-none border-0 bg-transparent focus-visible:ring-0 font-mono text-sm leading-relaxed p-5 overflow-y-auto"
-                                />
-                                {!data.text && (
-                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                        <p className="text-muted-foreground/50 text-sm">
-                                            No text content in this clip.
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
+                            {/* Syntax highlighted content */}
+                            {data.text ? (
+                                <SyntaxContent text={data.text} />
+                            ) : (
+                                <div className="flex-1 min-h-0 relative rounded-xl border border-border bg-muted/30 overflow-hidden flex items-center justify-center">
+                                    <p className="text-muted-foreground/50 text-sm">
+                                        No text content in this clip.
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Files sidebar */}
                         <div className="min-h-0 overflow-y-auto space-y-4 pb-1">
-                            {uploadedFiles && uploadedFiles.length > 0 && (
+                            {hasFiles && (
                                 <div className="rounded-xl border border-border bg-card overflow-hidden">
                                     <div className="px-4 py-3 border-b border-border flex items-center gap-2">
                                         <div className="w-1.5 h-5 rounded-full bg-emerald-500" />
@@ -517,6 +907,9 @@ const ClipExistPage: React.FC<ClipExistPageProps> = ({ clipName, data }) => {
 ───────────────────────────────────────────── */
 const ClipNotExistPage: React.FC<ClipNotExistPageProps> = ({ clipName }) => {
     const [password, setPassword] = useState("");
+    const [customExpiryDate, setCustomExpiryDate] = useState<Date | undefined>(
+        undefined,
+    );
 
     const form = useForm<z.infer<typeof FormSchema>>({
         resolver: zodResolver(FormSchema),
@@ -526,22 +919,51 @@ const ClipNotExistPage: React.FC<ClipNotExistPageProps> = ({ clipName }) => {
         form.setValue("name", clipName);
     }, [clipName, form]);
 
+    const selectedValidity = form.watch("validity");
+
     async function onClipSubmit(data: z.infer<typeof FormSchema>) {
-        const formData = {
-            ...data,
-            password,
-            files: uploadedFiles.map((file) => ({
-                url: file.url,
-                key: file.key,
-                name: file.name,
-            })),
-        };
-        await createClip(formData);
-        toast.success("Clip created successfully!");
-        setTimeout(() => window.location.reload(), 1000);
+        if (isCreating) return;
+        setIsCreating(true);
+        try {
+            // For custom expiry, compute seconds from now
+            let effectiveValidity = data.validity;
+            if (data.validity === "custom") {
+                if (!customExpiryDate) {
+                    toast.error("Please select a custom expiry date.");
+                    return;
+                }
+                const secondsFromNow = Math.floor(
+                    (customExpiryDate.getTime() - Date.now()) / 1000,
+                );
+                if (secondsFromNow < 60) {
+                    toast.error(
+                        "Expiry must be at least 1 minute in the future.",
+                    );
+                    return;
+                }
+                effectiveValidity = String(secondsFromNow);
+            }
+
+            const formData = {
+                ...data,
+                validity: effectiveValidity,
+                password,
+                files: uploadedFiles.map((file) => ({
+                    url: file.url,
+                    key: file.key,
+                    name: file.name,
+                })),
+            };
+            await createClip(formData);
+            toast.success("Clip created successfully!");
+            setTimeout(() => window.location.reload(), 1000);
+        } finally {
+            setIsCreating(false);
+        }
     }
 
     const [loading, setLoading] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
     const { onUpload, progresses, uploadedFiles, isUploading } = useUploadFile(
         "fileUploader",
         { defaultUploadedFiles: [] },
@@ -576,6 +998,7 @@ const ClipNotExistPage: React.FC<ClipNotExistPageProps> = ({ clipName }) => {
         { value: "86400", label: "1 Day" },
         { value: "604800", label: "1 Week" },
         { value: "2592000", label: "1 Month" },
+        { value: "custom", label: "Custom date & time…" },
     ];
 
     return (
@@ -624,6 +1047,7 @@ const ClipNotExistPage: React.FC<ClipNotExistPageProps> = ({ clipName }) => {
                                         )}
                                     />
 
+                                    {/* Validity */}
                                     <FormField
                                         control={form.control}
                                         name="validity"
@@ -633,39 +1057,69 @@ const ClipNotExistPage: React.FC<ClipNotExistPageProps> = ({ clipName }) => {
                                                     <Clock className="w-4 h-4 text-muted-foreground" />
                                                     Clip Validity
                                                 </FormLabel>
-                                                <Select
-                                                    onValueChange={
-                                                        field.onChange
-                                                    }
-                                                    value={field.value}
-                                                >
-                                                    <FormControl>
-                                                        <SelectTrigger className="w-[220px] rounded-lg">
-                                                            <SelectValue placeholder="Choose duration" />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        {validityOptions.map(
-                                                            (opt) => (
-                                                                <SelectItem
-                                                                    key={
-                                                                        opt.value
-                                                                    }
-                                                                    value={
-                                                                        opt.value
-                                                                    }
-                                                                >
-                                                                    {opt.label}
-                                                                </SelectItem>
-                                                            ),
-                                                        )}
-                                                    </SelectContent>
-                                                </Select>
+                                                <div className="flex items-start gap-3 flex-wrap">
+                                                    <Select
+                                                        onValueChange={
+                                                            field.onChange
+                                                        }
+                                                        value={field.value}
+                                                    >
+                                                        <FormControl>
+                                                            <SelectTrigger className="w-[220px] rounded-lg">
+                                                                <SelectValue placeholder="Choose duration" />
+                                                            </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            {validityOptions.map(
+                                                                (opt) => (
+                                                                    <SelectItem
+                                                                        key={
+                                                                            opt.value
+                                                                        }
+                                                                        value={
+                                                                            opt.value
+                                                                        }
+                                                                    >
+                                                                        {opt.value ===
+                                                                        "custom" ? (
+                                                                            <span className="flex items-center gap-2">
+                                                                                <CalendarIcon className="w-3.5 h-3.5" />
+                                                                                {
+                                                                                    opt.label
+                                                                                }
+                                                                            </span>
+                                                                        ) : (
+                                                                            opt.label
+                                                                        )}
+                                                                    </SelectItem>
+                                                                ),
+                                                            )}
+                                                        </SelectContent>
+                                                    </Select>
+
+                                                    {/* Shadcn DateTimePicker — shown only when "custom" is selected */}
+                                                    {selectedValidity ===
+                                                        "custom" && (
+                                                        <DateTimePicker
+                                                            value={
+                                                                customExpiryDate
+                                                            }
+                                                            onChange={
+                                                                setCustomExpiryDate
+                                                            }
+                                                            minDate={addMinutes(
+                                                                new Date(),
+                                                                1,
+                                                            )}
+                                                        />
+                                                    )}
+                                                </div>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
                                     />
 
+                                    {/* Text */}
                                     <FormField
                                         control={form.control}
                                         name="text"
@@ -689,6 +1143,7 @@ const ClipNotExistPage: React.FC<ClipNotExistPageProps> = ({ clipName }) => {
                                         )}
                                     />
 
+                                    {/* Create button */}
                                     <div className="shrink-0">
                                         <Dialog>
                                             <DialogTrigger asChild>
@@ -735,8 +1190,16 @@ const ClipNotExistPage: React.FC<ClipNotExistPageProps> = ({ clipName }) => {
                                                         onClick={form.handleSubmit(
                                                             onClipSubmit,
                                                         )}
+                                                        disabled={isCreating}
                                                     >
-                                                        Create Clip
+                                                        {isCreating ? (
+                                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                        ) : (
+                                                            <Plus className="w-4 h-4 mr-2" />
+                                                        )}
+                                                        {isCreating
+                                                            ? "Creating…"
+                                                            : "Create Clip"}
                                                     </Button>
                                                 </DialogFooter>
                                             </DialogContent>
@@ -856,14 +1319,14 @@ const ClipNotExistPage: React.FC<ClipNotExistPageProps> = ({ clipName }) => {
                                         <span className="text-emerald-400 mt-0.5">
                                             ✦
                                         </span>
-                                        Add a password to keep your content
-                                        private.
+                                        Paste a URL to use as a link shortener.
                                     </li>
                                     <li className="flex gap-2">
                                         <span className="text-emerald-400 mt-0.5">
                                             ✦
                                         </span>
-                                        Upload files alongside your text.
+                                        Code is syntax-highlighted
+                                        automatically.
                                     </li>
                                 </ul>
                             </div>
