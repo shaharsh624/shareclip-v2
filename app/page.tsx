@@ -66,7 +66,7 @@ function ElegantShape({
                         "backdrop-blur-[2px] border-2 border-white/[0.15]",
                         "shadow-[0_8px_32px_0_rgba(255,255,255,0.1)]",
                         "after:absolute after:inset-0 after:rounded-full",
-                        "after:bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.2),transparent_70%)]"
+                        "after:bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.2),transparent_70%)]",
                     )}
                 />
             </motion.div>
@@ -87,8 +87,8 @@ type HeroGeometricProps = {
     description?: string;
     className?: string;
 };
-export default function Home({
-    badges = [
+export default function Home() {
+    const badges = [
         {
             name: "harshshahdev",
             url: "https://www.linkedin.com/in/harshshahdev",
@@ -104,13 +104,16 @@ export default function Home({
             url: "https://x.com/_shaharshhh",
             icon: <Icons.x className="size-4" />,
         },
-    ],
-    title1 = "Share Unlimited",
-    title2 = "Text and Files on",
-    title3 = "Shareclip",
-    description = "Create temporary clips with custom URLs. Perfect for sharing information or files online.",
-    className,
-}: HeroGeometricProps) {
+    ];
+
+    const title1 = "Share Unlimited";
+    const title2 = "Text and Files on";
+    const title3 = "Shareclip";
+    const description =
+        "Create temporary clips with custom URLs. Perfect for sharing information or files online.";
+
+    const className = "";
+
     const fadeUpVariants = {
         hidden: { opacity: 0, y: 30 },
         visible: (i: number) => ({
@@ -141,7 +144,7 @@ export default function Home({
         <div
             className={cn(
                 "relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#030303]",
-                className
+                className,
             )}
         >
             <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/[0.05] via-transparent to-rose-500/[0.05] blur-3xl" />
@@ -225,7 +228,7 @@ export default function Home({
                                 <br />
                                 <span
                                     className={cn(
-                                        "bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-white/90 to-rose-300"
+                                        "bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-white/90 to-rose-300",
                                     )}
                                 >
                                     {title2}
@@ -233,7 +236,7 @@ export default function Home({
                                 <br />
                                 <span
                                     className={cn(
-                                        "flex justify-center bg-clip-text text-transparent bg-gradient-to-b from-emerald-500 to-lime-300"
+                                        "flex justify-center bg-clip-text text-transparent bg-gradient-to-b from-emerald-500 to-lime-300",
                                     )}
                                 >
                                     {title3}
